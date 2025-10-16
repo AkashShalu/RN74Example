@@ -24,20 +24,19 @@ jobs:
         with:
           node-version: 18
 
-      # Step 3: Setup Yarn 3
+      # Step 3: Setup Yarn
       - name: Setup Yarn
-        run: |
-          corepack enable
-          corepack prepare yarn@3.6.4 --activate
+        run: corepack enable
 
-      # Step 4: Install dependencies (create node_modules for Gradle)
+      # Step 4: Install dependencies
       - name: Install dependencies
-        run: |
-          corepack enable
-          corepack prepare yarn@3.6.4 --activate
-          yarn install --immutable
+        run: yarn install --frozen-lockfile
 
-      # Step 5: Setup Android SDK + NDK
+      # Step 5: Verify react.gradle
+      - name: Check react.gradle
+        run: ls -la node_modules/react-native/react.gradle
+
+      # Step 6: Setup Android SDK + NDK
       - name: Setup Android SDK + NDK
         uses: android-actions/setup-android@v2
         with:
@@ -46,14 +45,14 @@ jobs:
           ndk-version: 26.1.10909125
           cmake-version: 3.22.1
 
-      # Step 6: Build Android APK
+      # Step 7: Build Android APK
       - name: Build Android APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew clean assembleRelease
 
-      # Step 7: Upload APK artifact
+      # Step 8: Upload APK artifact
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -68,31 +67,24 @@ jobs:
     needs: build-android  # optional: run after Android
 
     steps:
-      # Step 1: Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # Step 3: Setup Yarn 3
       - name: Setup Yarn
-        run: |
-          corepack enable
-          corepack prepare yarn@3.6.4 --activate
+        run: corepack enable
 
-      # Step 4: Install dependencies & Pods
       - name: Install dependencies & Pods
         run: |
-          yarn install --immutable --install-links
+          yarn install --frozen-lockfile --install-links
           cd ios
           yarn pod-install
 
-      # Step 5: Build iOS App (Unsigned)
-      - name: Build iOS IPA (Unsigned)
+      - name: Build iOS App (Unsigned)
         run: |
           cd ios
           xcodebuild \
@@ -105,13 +97,4 @@ jobs:
 
           # Export unsigned IPA
           xcodebuild -exportArchive \
-            -archivePath $PWD/build/RN74Example.xcarchive \
-            -exportPath $PWD/build/ \
-            -exportOptionsPlist ExportOptions.plist
-
-      # Step 6: Upload iOS IPA
-      - name: Upload iOS IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-ios
-          path: ios/build/*.ipa
+            -archivePath $PWD/build/RN7
