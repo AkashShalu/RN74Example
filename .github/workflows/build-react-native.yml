@@ -33,7 +33,9 @@ jobs:
       # Step 4: Install dependencies (create node_modules for Gradle)
       - name: Install dependencies
         run: |
-          yarn install --immutable --install-links
+          corepack enable
+          corepack prepare yarn@3.6.4 --activate
+          yarn install --immutable
 
       # Step 5: Setup Android SDK + NDK
       - name: Setup Android SDK + NDK
