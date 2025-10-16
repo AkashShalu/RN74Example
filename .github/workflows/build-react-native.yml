@@ -27,30 +27,22 @@ jobs:
           corepack enable
           corepack prepare yarn@3.6.4 --activate
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
       - name: Install dependencies
-        run: |
-          yarn install --immutable
-          cd android
-          chmod +x gradlew
+        run: yarn install --immutable
 
-      - name: Setup Android SDK + NDK + CMake
+      - name: Setup Android SDK + NDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 33
           target: android-33
-          ndk-version: 26.1.10909125  # matches your android/build.gradle
+          ndk-version: 26.1.10909125
           cmake-version: 3.22.1
 
-      - name: Build Android Release APK
+      - name: Build Android APK
         run: |
           cd android
-          ./gradlew assembleRelease -PnodeExecutable=$(which node)
+          chmod +x gradlew
+          ./gradlew clean assembleRelease
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -63,7 +55,7 @@ jobs:
   # -------------------------
   build-ios:
     runs-on: macos-latest
-    needs: build-android
+    needs: build-android  # optional: run after Android
 
     steps:
       - name: Checkout repository
@@ -79,22 +71,31 @@ jobs:
           corepack enable
           corepack prepare yarn@3.6.4 --activate
 
-      - name: Install dependencies
+      - name: Install dependencies & Pods
         run: |
           yarn install --immutable
           cd ios
-          pod install --repo-update
+          yarn pod-install
 
       - name: Build iOS App (Unsigned)
         run: |
           cd ios
           xcodebuild \
-            -workspace DateTimePicker.xcworkspace \
-            -scheme DateTimePicker \
+            -workspace RN74Example.xcworkspace \
+            -scheme RN74Example \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath $PWD/build/DateTimePicker.xcarchive \
+            -archivePath $PWD/build/RN74Example.xcarchive \
             archive
 
+          # Export unsigned IPA
           xcodebuild -exportArchive \
-            -archivePath $PWD/build/
+            -archivePath $PWD/build/RN74Example.xcarchive \
+            -exportPath $PWD/build/ \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-ios
+          path: ios/build/*.ipa
