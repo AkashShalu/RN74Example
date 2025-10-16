@@ -20,14 +20,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18 # React Native 0.59 compatible
-      
+          node-version: 18
+
       - name: Setup Yarn 3
         run: |
           corepack enable
           corepack prepare yarn@3.6.4 --activate
-      
-      - name: Setup Java 17 for SDK tools
+
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -35,15 +35,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install --legacy-peer-deps
+          yarn install --immutable
           cd android
           chmod +x gradlew
-          
-      - name: Set up Android SDK and compatible NDK
-        run: |
-          echo "Installing NDK 21.4.7075529..."
-          yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;21.4.7075529"
-          echo "ndk.dir=${ANDROID_SDK_ROOT}/ndk/21.4.7075529" >> android/local.properties
+
+      - name: Setup Android SDK + NDK + CMake
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 33
+          target: android-33
+          ndk-version: 26.1.10909125  # matches your android/build.gradle
+          cmake-version: 3.22.1
 
       - name: Build Android Release APK
         run: |
@@ -61,7 +63,7 @@ jobs:
   # -------------------------
   build-ios:
     runs-on: macos-latest
-    needs: build-android  # optional: run after Android
+    needs: build-android
 
     steps:
       - name: Checkout repository
@@ -72,9 +74,14 @@ jobs:
         with:
           node-version: 18
 
+      - name: Setup Yarn 3
+        run: |
+          corepack enable
+          corepack prepare yarn@3.6.4 --activate
+
       - name: Install dependencies
         run: |
-          npm install
+          yarn install --immutable
           cd ios
           pod install --repo-update
 
@@ -89,14 +96,5 @@ jobs:
             -archivePath $PWD/build/DateTimePicker.xcarchive \
             archive
 
-          # Export unsigned IPA
           xcodebuild -exportArchive \
-            -archivePath $PWD/build/DateTimePicker.xcarchive \
-            -exportPath $PWD/build/ \
-            -exportOptionsPlist ExportOptions.plist
-
-      - name: Upload iOS IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-ios
-          path: ios/build/*.ipa
+            -archivePath $PWD/build/
