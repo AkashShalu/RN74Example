@@ -14,29 +14,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Setup Node.js
-      - name: Setup Node.js
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # Step 3: Setup Yarn
-      - name: Setup Yarn
-        run: corepack enable
+      # Step 3: Force Yarn to use node_modules (not PnP)
+      - name: Configure Yarn linker
+        run: yarn config set nodeLinker node-modules
 
-      # Step 4: Install dependencies
+      # Step 4: Install dependencies (fresh)
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: |
+          rm -rf node_modules
+          yarn cache clean
+          yarn install --frozen-lockfile
 
-      # Step 5: Verify react.gradle
-      - name: Check react.gradle
-        run: ls -la node_modules/react-native/react.gradle
+      # Step 5: Verify react.gradle exists
+      - name: Verify react.gradle
+        run: |
+          if [ ! -f node_modules/react-native/react.gradle ]; then
+            echo "❌ react.gradle not found!"
+            ls -la node_modules/react-native || true
+            exit 1
+          fi
+          echo "✅ react.gradle found!"
 
-      # Step 6: Setup Android SDK + NDK
+      # Step 6: Set up Android SDK + NDK
       - name: Setup Android SDK + NDK
         uses: android-actions/setup-android@v2
         with:
@@ -52,7 +61,7 @@ jobs:
           chmod +x gradlew
           ./gradlew clean assembleRelease
 
-      # Step 8: Upload APK artifact
+      # Step 8: Upload built APK
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -64,23 +73,23 @@ jobs:
   # -------------------------
   build-ios:
     runs-on: macos-latest
-    needs: build-android  # optional: run after Android
+    needs: build-android
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Setup Yarn
-        run: corepack enable
+      - name: Configure Yarn linker
+        run: yarn config set nodeLinker node-modules
 
       - name: Install dependencies & Pods
         run: |
-          yarn install --frozen-lockfile --install-links
+          yarn install --frozen-lockfile
           cd ios
           yarn pod-install
 
@@ -97,4 +106,12 @@ jobs:
 
           # Export unsigned IPA
           xcodebuild -exportArchive \
-            -archivePath $PWD/build/RN7
+            -archivePath $PWD/build/RN74Example.xcarchive \
+            -exportPath $PWD/build/ \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-ios
+          path: ios/build/*.ipa
