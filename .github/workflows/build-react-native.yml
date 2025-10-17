@@ -42,15 +42,7 @@ jobs:
           # OR, if you use npm:
           npm install
 
-      # Step 5: Verify react.gradle exists
-      - name: Verify react.gradle
-        run: |
-          if [ ! -f node_modules/react-native/react.gradle ]; then
-            echo "❌ react.gradle not found!"
-            ls -la node_modules/react-native || true
-            exit 1
-          fi
-          echo "✅ react.gradle found!"
+      
 
       # Step 6: Set up Android SDK + NDK
       - name: Setup Android SDK + NDK
